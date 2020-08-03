@@ -1,0 +1,7 @@
+{
+  "verbose":true,
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": ["images/*"],
+  "exec": "ts-node -r tsconfig-paths/register src/main.ts"
+}

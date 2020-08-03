@@ -1,0 +1,54 @@
+{
+  "thumbnail": {
+    "outputSize": {
+      "width": 210,
+      "height": 118
+    },
+    "translate": {
+      "x": 0,
+      "y": 0
+    },
+    "allowedExt": ["jpg", "webp", "png", "jpeg"],
+    "outOptions": [{}]
+  },
+
+  "mobile": {
+    "outputSize": {
+      "width": 600,
+      "height": 144
+    },
+
+    "translate": {
+      "x": 0,
+      "y": 0
+    },
+    "allowedExt": ["jpg", "webp", "png", "jpeg"],
+    "outOptions": [{}]
+  },
+
+  "tablet": {
+    "outputSize": {
+      "width": 800,
+      "height": 193
+    },
+    "translate": {
+      "x": 0,
+      "y": 0
+    },
+    "allowedExt": ["jpg", "webp", "png", "jpeg"],
+    "outOptions": [{}]
+  },
+
+  "desktop": {
+    "outputSize": {
+      "width": 2600,
+      "height": 626
+    },
+    "translate": {
+      "x": 0,
+      "y": 0
+    },
+    "allowedExt": ["jpg", "webp", "png", "jpeg"],
+    "outOptions": [{}]
+  }
+}
