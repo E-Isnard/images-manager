@@ -17,14 +17,14 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(helmet());
   const optionsSwaggerJobs = new DocumentBuilder()
-    .setTitle('Image manager TJ')
+    .setTitle('Image manager')
     .setDescription(
-      'Image manager used to resize images for aeroports-voyages.fr website',
+      'Image manager used to resize images',
     )
     .setVersion('1.0')
     // .addBearerAuth({type:'http',scheme:'bearer',bearerFormat:'JWT'},'access-token')
-    .addBasicAuth({type:'http'},'login')
-    .addBasicAuth({type:'apiKey',name:'api-key',in:'header'},'Api-Key')
+    .addBasicAuth({ type: 'http' }, 'login')
+    .addBasicAuth({ type: 'apiKey', name: 'api-key', in: 'header' }, 'Api-Key')
     .build();
   const documentSwaggerJobs = SwaggerModule.createDocument(
     app,
@@ -33,18 +33,11 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, documentSwaggerJobs);
   await app.listen(process.env.PORT);
   // Logger.log(`Application is running on: ${await app.getUrl()}`, 'NestApplication.URL', false);
-  if (process.env.NODE_ENV === 'prod') {
-    Logger.log(
-      `Application is running on: https://traveljuice-seo.prod.traveljuice.fr`,
-      'NestApplication.URL',
-      false,
-    );
-  } else {
-    Logger.log(
-      `Application is running on: http://localhost:${process.env.PORT}`,
-      'NestApplication.URL',
-      false,
-    );
-  }
+  Logger.log(
+    `Application is running on: http://localhost:${process.env.PORT}`,
+    'NestApplication.URL',
+    false,
+  );
 }
+
 bootstrap();

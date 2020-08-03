@@ -454,13 +454,20 @@ export class ImageResizerService implements OnApplicationBootstrap {
             (outOption: { ext: string; quality: number }) => {
               let extResized = outOption.ext ? outOption.ext : ext.substring(1);
               extResized = extResized === 'jpeg' ? 'jpg' : extResized;
-              const fileResize = file
+              let fileResize = file
                 .replace(inputDir, path.join(outputDir, size))
                 .replace(ext, '.' + extResized);
               // console.log(fileResize);
               if (fs.existsSync(fileResize)) {
                 imgResized.push(fileResize);
               }
+
+              fileResize = fileResize.replace(outputDir,path.join(outputDir,'resized'))
+              if (fs.existsSync(fileResize)) {
+                imgResized.push(fileResize)
+              }
+              
+              
             }
           );
         }
