@@ -4,9 +4,11 @@ export declare class ImageResizerService implements OnApplicationBootstrap {
     imageWatcher(inputDir: string, outputDir: string, enableRemove?: boolean): void;
     resizeOneImage(file: string, inputDir: string, outputDir: string): Promise<void>;
     resizeDir(dir: string, inputDir: string, outputDir: string): void;
-    removeOneImage(file: string, inputDir: string, outputDir: string): Promise<void>;
+    removeOneImage(file: string, inputDir: string, outputDir: string): void;
     removeDir(dir: string, inputDir: string, outputDir: string): Promise<void>;
     configWatcher(inputDir: string, outputDir: string): Promise<void>;
     searchImages(regex: string, inputDir: string, outputDir: string): Promise<any[]>;
+    getConfig(inputDir: string, file: string): any;
+    removeAll(outputDir: string): void;
     onApplicationBootstrap(): Promise<void>;
 }

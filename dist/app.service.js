@@ -11,7 +11,7 @@ const common_1 = require("@nestjs/common");
 let AppService = (() => {
     let AppService = class AppService {
         getInfo() {
-            return 'Image manager TravelJuicer';
+            return 'Image manager';
         }
     };
     AppService = __decorate([

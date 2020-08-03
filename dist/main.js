@@ -14,8 +14,8 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     app.use(helmet());
     const optionsSwaggerJobs = new swagger_1.DocumentBuilder()
-        .setTitle('Image manager TJ')
-        .setDescription('Image manager used to resize images for aeroports-voyages.fr website')
+        .setTitle('Image manager')
+        .setDescription('Image manager used to resize images')
         .setVersion('1.0')
         .addBasicAuth({ type: 'http' }, 'login')
         .addBasicAuth({ type: 'apiKey', name: 'api-key', in: 'header' }, 'Api-Key')
@@ -23,12 +23,7 @@ async function bootstrap() {
     const documentSwaggerJobs = swagger_1.SwaggerModule.createDocument(app, optionsSwaggerJobs);
     swagger_1.SwaggerModule.setup('api', app, documentSwaggerJobs);
     await app.listen(process.env.PORT);
-    if (process.env.NODE_ENV === 'prod') {
-        common_1.Logger.log(`Application is running on: https://traveljuice-seo.prod.traveljuice.fr`, 'NestApplication.URL', false);
-    }
-    else {
-        common_1.Logger.log(`Application is running on: http://localhost:${process.env.PORT}`, 'NestApplication.URL', false);
-    }
+    common_1.Logger.log(`Application is running on: http://localhost:${process.env.PORT}`, 'NestApplication.URL', false);
 }
 bootstrap();
 //# sourceMappingURL=main.js.map

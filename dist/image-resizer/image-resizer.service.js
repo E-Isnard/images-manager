@@ -41,10 +41,15 @@ let ImageResizerService = (() => {
                     top: _top,
                     left: _left,
                 };
-                await imgResized
-                    .extract(extractOptions)
-                    .toFormat(extOut, { quality: imgQuality })
-                    .toFile(fileOut);
+                if (!opt.outputSize.width || !opt.outputSize.height) {
+                    await imgResized.toFormat(extOut, { quality: imgQuality }).toFile(path.join(fileOut));
+                }
+                else {
+                    await imgResized
+                        .extract(extractOptions)
+                        .toFormat(extOut, { quality: imgQuality })
+                        .toFile(path.join(fileOut));
+                }
                 console.log('Image', imagePath, ' has been resized');
             }
             catch (err) {
@@ -59,8 +64,8 @@ let ImageResizerService = (() => {
                 throw new Error('Error: No default.json file in input folder');
             }
             common_1.Logger.log('ImageWatcher has been launched', 'ImageWatcher', false);
-            common_1.Logger.log('imageWatcher', 'inputDir = ' + inputDir);
-            common_1.Logger.log('imageWatcher', 'outputDir = ' + outputDir);
+            common_1.Logger.log('inputDir = ' + inputDir, 'Image Watcher');
+            common_1.Logger.log('outputDir = ' + outputDir, 'ImageWatcher');
             if (!fs.existsSync(inputDir)) {
                 common_1.Logger.log('inputDir not found !');
             }
@@ -72,25 +77,12 @@ let ImageResizerService = (() => {
                 .on('addDir', (dir) => {
                 const baseDir = path.basename(dir);
                 console.log('Directory', baseDir, 'has been added');
-                const config = fs.readJSONSync(defaultConfigPath);
-                for (const size in config) {
-                    if (config.hasOwnProperty(size)) {
-                        try {
-                            const dirResized = dir.replace(inputDir, path.join(outputDir, size));
-                            fs.mkdirp(dirResized);
-                        }
-                        catch (err) {
-                            process.stdout.write(red);
-                            console.error(err.stack);
-                            process.stdout.write(white);
-                        }
-                        console.log('Directory', baseDir, 'has been created in', path.join(outputDir, size));
-                    }
-                }
             })
                 .on('add', async (file) => {
-                console.log('File', file, 'has been added');
-                await this.resizeOneImage(file, inputDir, outputDir);
+                if (!file.endsWith('.json')) {
+                    console.log('File', file, 'has been added');
+                    await this.resizeOneImage(file, inputDir, outputDir);
+                }
             })
                 .on('error', (err) => {
                 process.stdout.write(red);
@@ -101,35 +93,34 @@ let ImageResizerService = (() => {
                 imageWatcher
                     .on('unlink', async (file) => {
                     console.log('File', file, 'has been removed');
-                    await this.removeOneImage(file, inputDir, outputDir);
+                    this.removeOneImage(file, inputDir, outputDir);
                 })
                     .on('unlinkDir', (dir) => {
                     console.log('Directory', path.basename(dir), 'has been added');
-                    this.removeDir(dir, inputDir, outputDir);
+                    this.removeAll(outputDir);
+                    this.resizeDir(inputDir, inputDir, outputDir);
                 });
             }
         }
         async resizeOneImage(file, inputDir, outputDir) {
-            const defaultConfigPath = path.join(inputDir, 'default.json');
-            const dir = path.dirname(file);
             const base = path.basename(file);
-            const name = path.parse(file).name;
             const ext = path.parse(file).ext;
             try {
-                const config = fs.existsSync(path.join(dir, name + '.json'))
-                    ? fs.readJSONSync(path.join(dir, name + '.json'))
-                    : fs.readJSONSync(path.join(defaultConfigPath));
+                const config = this.getConfig(inputDir, file);
                 for (const size in config) {
                     if (config.hasOwnProperty(size)) {
                         const opt = config[size];
                         if (opt.allowedExt.includes(ext.substring(1))) {
-                            const dirResize = path.dirname(file.replace(inputDir, path.join(outputDir, size)));
-                            fs.ensureDir(dirResize);
+                            let dirResize = path.dirname(file.replace(inputDir, path.join(outputDir, size)));
+                            if (!opt.outputSize.width || !opt.outputSize.height) {
+                                dirResize = dirResize.replace(outputDir, path.join(outputDir, 'resized'));
+                            }
                             opt.outOptions.forEach(async (outOption) => {
                                 let extOut = outOption.ext ? outOption.ext : ext.substring(1);
                                 extOut = extOut === 'jpeg' ? 'jpg' : extOut;
                                 const quality = outOption.quality ? outOption.quality : 80;
                                 const baseOut = base.replace(ext, '.' + extOut);
+                                await fs.ensureDir(dirResize);
                                 await this.resize(file, path.join(dirResize, baseOut), opt, quality);
                                 console.log('File', base, 'has been created in', path.join(dirResize, baseOut));
                             });
@@ -152,32 +143,32 @@ let ImageResizerService = (() => {
         resizeDir(dir, inputDir, outputDir) {
             const files = readdirRec_1.readdirRec(dir);
             files.forEach(async (file) => {
-                if (!file.match('.*.json')) {
+                if (!file.endsWith('.json') && !file.endsWith('.gitignore')) {
                     this.resizeOneImage(file, inputDir, outputDir);
                 }
             });
         }
-        async removeOneImage(file, inputDir, outputDir) {
-            const defaultConfigPath = path.join(inputDir, 'default.json');
-            const dir = path.dirname(file);
+        removeOneImage(file, inputDir, outputDir) {
             const base = path.basename(file);
             const ext = path.parse(file).ext;
-            const name = path.parse(file).name;
-            const config = fs.existsSync(path.join(dir, name + '.json'))
-                ? fs.readJSONSync(path.join(dir, name + '.json'))
-                : fs.readJSONSync(defaultConfigPath);
+            const config = this.getConfig(inputDir, file);
             for (const size in config) {
                 if (config.hasOwnProperty(size)) {
                     const opt = config[size];
                     opt.outOptions.forEach((outOption) => {
                         let extResized = outOption.ext ? outOption.ext : ext.substring(1);
                         extResized = extResized === 'jpeg' ? 'jpg' : extResized;
-                        const fileResize = file
+                        let fileResize = file
                             .replace(inputDir, path.join(outputDir, size))
                             .replace(ext, '.' + extResized);
+                        if (!opt.outputSize.width || !opt.outputSize.height) {
+                            fileResize = fileResize.replace(outputDir, path.join(outputDir, 'resized'));
+                        }
+                        console.log(fileResize);
                         if (fs.existsSync(fileResize)) {
                             try {
-                                fs.unlink(fileResize).then(() => console.log('File', base, 'has been removed of', path.dirname(fileResize)));
+                                fs.unlinkSync(fileResize);
+                                console.log('File', base, 'has been removed of', path.dirname(fileResize));
                             }
                             catch (err) {
                                 process.stdout.write(red);
@@ -185,11 +176,23 @@ let ImageResizerService = (() => {
                                 process.stdout.write(white);
                             }
                         }
+                        if (fs.existsSync(path.parse(fileResize).dir) && fs.readdirSync(path.parse(fileResize).dir).length === 0) {
+                            fs.removeSync(path.parse(fileResize).dir);
+                            console.log('Directory ', path.dirname(fileResize), 'has been removed');
+                        }
+                        if (fs.existsSync(path.join(outputDir, size)) && fs.readdirSync(path.join(outputDir, size)).length === 0) {
+                            fs.removeSync(path.join(outputDir, size));
+                            console.log('Directory', size, 'has been removed of', outputDir);
+                        }
+                        if (fs.existsSync(path.join(outputDir, 'resized', size)) && fs.readdirSync(path.join(outputDir, 'resized', size)).length === 0) {
+                            fs.removeSync(path.join(outputDir, 'resized', size));
+                            console.log('Directory', path.join('resized', size), 'has been removed of', outputDir);
+                        }
+                        if (fs.existsSync(path.join(outputDir, 'resized')) && fs.readdirSync(path.join(outputDir, 'resized')).length === 0) {
+                            fs.removeSync(path.join(outputDir, 'resized'));
+                            console.log('Directory resized has been removed of', outputDir);
+                        }
                     });
-                    if (fs.existsSync(path.join(outputDir, size)) &&
-                        fs.readdirSync(path.join(outputDir, size)).length === 0) {
-                        fs.rmdir(path.join(outputDir, size)).then(() => console.log('Directory', size, 'has been removed of', outputDir));
-                    }
                 }
             }
         }
@@ -197,28 +200,21 @@ let ImageResizerService = (() => {
             const defaultConfigPath = path.join(inputDir, 'default.json');
             const baseDir = path.basename(dir);
             console.log('Directory', baseDir, 'has been removed');
-            const config = fs.readJSONSync(defaultConfigPath);
-            for (const size in config) {
-                if (config.hasOwnProperty(size)) {
-                    const dirResized = dir.replace(inputDir, path.join(outputDir, size));
-                    if (fs.existsSync(dirResized)) {
-                        try {
-                            fs.removeSync(dirResized);
-                        }
-                        catch (err) {
-                            process.stdout.write(red);
-                            console.error(err.stack);
-                            process.stdout.write(white);
-                        }
-                        console.log('Directory', baseDir, 'has been removed in', path.join(outputDir, size));
-                        if (fs.existsSync(path.join(outputDir, size)) &&
-                            fs.readdirSync(path.join(outputDir, size)).length === 0) {
-                            await fs.rmdir(path.join(outputDir, size));
-                            console.log('Directory', size, 'has been removed of', outputDir);
-                        }
+            const defaultConfig = fs.readJSONSync(defaultConfigPath);
+            if (fs.existsSync(dir)) {
+                const files = readdirRec_1.readdirRec(dir);
+                files.forEach(async (file) => {
+                    try {
+                        this.removeOneImage(file, inputDir, outputDir);
                     }
-                }
+                    catch (err) {
+                        process.stdout.write(red);
+                        console.error(err.stack);
+                        process.stdout.write(white);
+                    }
+                });
             }
+            console.log('Directory', dir, 'has been removed of', outputDir);
         }
         async configWatcher(inputDir, outputDir) {
             common_1.Logger.log('ConfigWatcher has been launched', 'ConfigWatcher', false);
@@ -232,13 +228,33 @@ let ImageResizerService = (() => {
                         const dir = path.dirname(cfgFile);
                         console.log('Config file', cfgBase, 'has been', event === 'add' ? event + 'ed' : event + 'd');
                         if (cfgBase === 'default.json') {
+                            this.removeAll(outputDir);
                             this.resizeDir(inputDir, inputDir, outputDir);
                         }
                         else {
-                            const files = await readdirRec_1.readdirRec(dir);
+                            const files = readdirRec_1.readdirRec(dir);
                             const imagePath = files.filter((file) => file.match(`${cfgName}(?!.*\.json)`))[0];
                             if (fs.existsSync(imagePath)) {
                                 this.resizeOneImage(imagePath, inputDir, outputDir);
+                            }
+                        }
+                    }
+                }
+                if (cfgFile.endsWith('.json') && event === 'unlink') {
+                    const cfgBase = path.basename(cfgFile);
+                    const cfgName = path.parse(cfgFile).name;
+                    const dir = path.parse(cfgFile).dir;
+                    if (cfgBase === 'default.json') {
+                        if (fs.existsSync(dir)) {
+                            this.removeAll(outputDir);
+                            this.resizeDir(dir, inputDir, outputDir);
+                        }
+                    }
+                    else {
+                        if (fs.existsSync(dir)) {
+                            const filesToResize = fs.readdirSync(dir).filter((file) => file.match(path.join(dir, cfgName + '\..*')));
+                            if (filesToResize.length) {
+                                this.resizeOneImage(filesToResize[0], inputDir, outputDir);
                             }
                         }
                     }
@@ -255,9 +271,7 @@ let ImageResizerService = (() => {
                 const dir = path.dirname(file);
                 const ext = path.parse(file).ext;
                 const name = path.parse(file).name;
-                const config = fs.existsSync(path.join(dir, name + '.json'))
-                    ? fs.readJSONSync(path.join(dir, name + '.json'))
-                    : fs.readJSONSync(defaultConfigPath);
+                const config = this.getConfig(inputDir, file);
                 const imgResized = [];
                 for (const size in config) {
                     if (config.hasOwnProperty(size)) {
@@ -265,9 +279,13 @@ let ImageResizerService = (() => {
                         opt.outOptions.forEach((outOption) => {
                             let extResized = outOption.ext ? outOption.ext : ext.substring(1);
                             extResized = extResized === 'jpeg' ? 'jpg' : extResized;
-                            const fileResize = file
+                            let fileResize = file
                                 .replace(inputDir, path.join(outputDir, size))
                                 .replace(ext, '.' + extResized);
+                            if (fs.existsSync(fileResize)) {
+                                imgResized.push(fileResize);
+                            }
+                            fileResize = fileResize.replace(outputDir, path.join(outputDir, 'resized'));
                             if (fs.existsSync(fileResize)) {
                                 imgResized.push(fileResize);
                             }
@@ -277,6 +295,35 @@ let ImageResizerService = (() => {
                 out.push({ original: file, resized: imgResized });
             });
             return out;
+        }
+        getConfig(inputDir, file) {
+            const name = path.parse(file).name;
+            let dir = path.parse(file).dir;
+            if (fs.existsSync(path.join(dir, name + '.json'))) {
+                return fs.readJSONSync(path.join(dir, name + '.json'));
+            }
+            else {
+                let searchConfigFile = true;
+                while (searchConfigFile) {
+                    if (fs.existsSync(path.join(dir, 'default.json'))) {
+                        return fs.readJSONSync(path.join(dir, 'default.json'));
+                    }
+                    else {
+                        dir = path.join(dir, '..');
+                    }
+                    if (path.resolve(dir) === inputDir) {
+                        searchConfigFile = false;
+                    }
+                }
+            }
+        }
+        removeAll(outputDir) {
+            const filesToDelete = fs.readdirSync(outputDir).filter((file) => !file.endsWith('.gitignore'));
+            filesToDelete.forEach((file) => {
+                const filePath = path.join(outputDir, file);
+                fs.removeSync(filePath);
+                console.log(filePath, 'has been removed of', outputDir);
+            });
         }
         async onApplicationBootstrap() {
             try {

@@ -7,11 +7,12 @@ export declare class ImageResizerController {
         statusCode: number;
         message: string;
     }>;
+    removeAll(): Promise<string>;
     resizeDir(dirName: string): Promise<string | {
         statusCode: number;
         message: string;
     }>;
-    removeOneImage(imageName: string, removeOriginal: string): Promise<string>;
-    removeDir(dirName: string, removeOriginal: string): Promise<string>;
+    removeOneImage(imageName: string, removeOriginal: boolean): Promise<string>;
+    removeDir(dirName: string, removeOriginal: boolean): Promise<string>;
     searchImages(regex: string): Promise<any>;
 }

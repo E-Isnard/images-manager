@@ -44,6 +44,15 @@ let ImageResizerController = (() => {
                 return { statusCode: 404, message: 'Input image does not exist' };
             }
         }
+        async removeAll() {
+            try {
+                this.imgResizerService.removeAll(process.env.OUTPUT_DIR);
+                return 'Files in ' + process.env.OUTPUT_DIR + ' have been removed';
+            }
+            catch (err) {
+                throw err;
+            }
+        }
         async resizeDir(dirName) {
             const dirPath = path.join(process.env.INPUT_DIR, dirName);
             if (fs.existsSync(dirPath)) {
@@ -64,11 +73,11 @@ let ImageResizerController = (() => {
             if (imageName.match('.*\.json') || path.basename(imageName).match('.*\.gitignore$')) {
                 throw new common_1.UnauthorizedException('You cannot delete .json or .gitignore file with this command');
             }
-            if (removeOriginal === 'true' && fs.existsSync(imagePath)) {
+            if (removeOriginal && fs.existsSync(imagePath)) {
                 fs.unlinkSync(imagePath);
                 returnString += `Image ${imageName} has been removed in ${process.env.INPUT_DIR} directory`;
             }
-            await this.imgResizerService.removeOneImage(imagePath, process.env.INPUT_DIR, process.env.OUTPUT_DIR);
+            this.imgResizerService.removeOneImage(imagePath, process.env.INPUT_DIR, process.env.OUTPUT_DIR);
             return `Image ${imageName} has been removed in ${process.env.OUTPUT_DIR} directory`;
         }
         async removeDir(dirName, removeOriginal) {
@@ -79,7 +88,7 @@ let ImageResizerController = (() => {
                 throw new common_1.UnauthorizedException('You cannot modify folders that are not in inputDir');
             }
             await this.imgResizerService.removeDir(dirPath, process.env.INPUT_DIR, process.env.OUTPUT_DIR);
-            if (removeOriginal === 'true' && fs.existsSync(dirPath)) {
+            if (removeOriginal && fs.existsSync(dirPath)) {
                 await fs.remove(dirPath);
                 returnString += `\nDirectory ${dirName} has been removed in ${process.env.INPUT_DIR}`;
             }
@@ -111,6 +120,15 @@ let ImageResizerController = (() => {
     __decorate([
         swagger_1.ApiBasicAuth('login'),
         common_1.UseGuards(passport_1.AuthGuard('basic')),
+        common_1.Get('removeAll'),
+        swagger_1.ApiOperation({ summary: 'Remove all images', tags: ['image-resize'], description: 'Remove all images in outputDir' }),
+        __metadata("design:type", Function),
+        __metadata("design:paramtypes", []),
+        __metadata("design:returntype", Promise)
+    ], ImageResizerController.prototype, "removeAll", null);
+    __decorate([
+        swagger_1.ApiBasicAuth('login'),
+        common_1.UseGuards(passport_1.AuthGuard('basic')),
         swagger_1.ApiOperation({ summary: 'Resize content of one directory', tags: ['image-resize'], description: 'Resize content of a directory of input directory and put the result in output directory according to the tree view of json files' }),
         common_1.Get('resizeDir/:dirName'),
         __param(0, common_1.Param('dirName')),
@@ -123,9 +141,9 @@ let ImageResizerController = (() => {
         common_1.UseGuards(passport_1.AuthGuard('basic')),
         swagger_1.ApiOperation({ summary: 'Remove one image', tags: ['image-resize'], description: 'Remove image in input directory and files created in the output directory' }),
         common_1.Get('removeOneImage/:imageName'),
-        __param(0, common_1.Param('imageName')), __param(1, common_1.Query('removeOriginal')),
+        __param(0, common_1.Param('imageName')), __param(1, common_1.Query('removeOriginal', common_1.ParseBoolPipe)),
         __metadata("design:type", Function),
-        __metadata("design:paramtypes", [String, String]),
+        __metadata("design:paramtypes", [String, Boolean]),
         __metadata("design:returntype", Promise)
     ], ImageResizerController.prototype, "removeOneImage", null);
     __decorate([
@@ -133,9 +151,9 @@ let ImageResizerController = (() => {
         common_1.UseGuards(passport_1.AuthGuard('basic')),
         swagger_1.ApiOperation({ summary: 'Remove one directory', tags: ['image-resize'], description: 'Remove directory in input directory and files created in output directory' }),
         common_1.Get('removeDir/:dirName'),
-        __param(0, common_1.Param('dirName')), __param(1, common_1.Query('removeOriginal')),
+        __param(0, common_1.Param('dirName')), __param(1, common_1.Query('removeOriginal', common_1.ParseBoolPipe)),
         __metadata("design:type", Function),
-        __metadata("design:paramtypes", [String, String]),
+        __metadata("design:paramtypes", [String, Boolean]),
         __metadata("design:returntype", Promise)
     ], ImageResizerController.prototype, "removeDir", null);
     __decorate([
